@@ -4,7 +4,7 @@ import "./styles.css";
 export const metadata: Metadata = {
   title: "FR Engenharia Civil | Segurança, Regularização e Laudos",
   description: "Soluções técnicas em engenharia civil, licenças, regularização de imóveis, laudos e avaliações.",
-  metadataBase: new URL("https://frengenharia.vercel.app"),
+  metadataBase: new URL("https://fr-engenharia-civil.vercel.app"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
