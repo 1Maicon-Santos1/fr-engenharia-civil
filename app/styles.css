@@ -30,3 +30,6 @@
 
 /* Mantém as heros do mobile em uma coluna e acima do fundo, sem herdar a grade desktop. */
 @media(max-width:800px){.hero,.serviceHero{grid-template-columns:minmax(0,1fr)}.heroVisual,.serviceHeroVisual{z-index:0}.heroContent{z-index:1}.serviceHero>div:first-child{z-index:1}.proofPhoto img,.inspectionPhoto img{object-position:center}}
+
+/* A camada institucional das heros sobe da base: azul intenso embaixo e suave no topo. */
+.heroVisual:after,.serviceHeroVisual:after{background:linear-gradient(to top,rgba(0,29,52,.96) 0%,rgba(0,29,52,.76) 34%,rgba(0,29,52,.43) 65%,rgba(0,29,52,.16) 100%)}
