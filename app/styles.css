@@ -33,3 +33,6 @@
 
 /* A camada institucional das heros sobe da base: azul intenso embaixo e suave no topo. */
 .heroVisual:after,.serviceHeroVisual:after{background:linear-gradient(to top,rgba(0,29,52,.96) 0%,rgba(0,29,52,.76) 34%,rgba(0,29,52,.43) 65%,rgba(0,29,52,.16) 100%)}
+
+/* No celular, a imagem fica entre o fundo e o conteúdo — sem risco de ficar escondida. */
+@media(max-width:800px){.hero,.serviceHero{isolation:isolate;background:#001d34}.heroVisual,.serviceHeroVisual{display:block!important;visibility:visible!important;z-index:0!important}.heroVisual img,.serviceHeroVisual img{display:block!important;z-index:0}.heroVisual:after,.serviceHeroVisual:after{z-index:1}.heroContent,.serviceHero>div:first-child{z-index:2!important}}
