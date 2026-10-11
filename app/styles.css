@@ -27,3 +27,6 @@
 @media(max-width:500px){
   .heroContent{padding-top:58px;padding-bottom:112px}.hero h1{font-size:44px}.heroTrust{gap:18px 14px;margin-top:38px}.heroTrust b{font-size:12px}.heroTrust span{font-size:11px}.primary{min-height:54px;padding-right:18px;padding-left:18px}.serviceHero{padding-top:56px}.serviceHero h1{font-size:42px}.serviceHero p:not(.eyebrow){font-size:16px}.leadAside{min-height:238px;padding-top:23px}.modalAsideCopy h2{font-size:31px}.leadPanel{min-height:calc(100svh - 238px);padding-top:67px}.leadForm h1,.leadResult h1{font-size:33px}.leadHelper{font-size:14px}.solutionChoices button{min-height:91px}.mobileQuote{font-size:14px}
 }
+
+/* Mantém as heros do mobile em uma coluna e acima do fundo, sem herdar a grade desktop. */
+@media(max-width:800px){.hero,.serviceHero{grid-template-columns:minmax(0,1fr)}.heroVisual,.serviceHeroVisual{z-index:0}.heroContent{z-index:1}.serviceHero>div:first-child{z-index:1}.proofPhoto img,.inspectionPhoto img{object-position:center}}
