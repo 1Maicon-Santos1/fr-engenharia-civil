@@ -28,7 +28,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
   const [phase,setPhase]=useState<Phase>("quick");
   const [quickStep,setQuickStep]=useState(preset?2:1);
   const [detailStep,setDetailStep]=useState(1);
-  const [leadId,setLeadId]=useState<number|null>(null);
+  const [leadId,setLeadId]=useState<string|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
   const [form,setForm]=useState<Form>({...initial,service:preset||""});
@@ -36,6 +36,22 @@ export function LeadQuiz({preset}:{preset?:string}) {
   const set=(key:keyof Form,value:string)=>setForm(current=>({...current,[key]:value}));
   const close=()=>setOpen(false);
   const launch=()=>{setOpen(true);setError("");};
+  useEffect(()=>{
+    const onClick=(event:MouseEvent)=>{
+      const target=event.target;
+      if(!(target instanceof Element)) return;
+      const link=target.closest<HTMLAnchorElement>('a[data-open-lead="true"]');
+      if(!link) return;
+      event.preventDefault();
+      launch();
+    };
+    const onHash=()=>{if(window.location.hash==="#diagnostico"){window.history.replaceState(null,"",window.location.pathname+window.location.search);launch();}};
+    document.addEventListener("click",onClick);
+    window.addEventListener("hashchange",onHash);
+    onHash();
+    return ()=>{document.removeEventListener("click",onClick);window.removeEventListener("hashchange",onHash);};
+  },[]);
+
 
   useEffect(()=>{
     if(!open) return;
@@ -59,7 +75,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
       const response=await fetch("/api/leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:form.service,name:form.name,phone:form.phone,email:form.email,city:form.city})});
       const body=await response.json();
       if(!response.ok) throw new Error(body.error||"Não foi possível enviar seus dados.");
-      setLeadId(body.lead.id);setPhase("choice");
+      if(!body?.lead?.id) throw new Error("Não foi possível confirmar o cadastro. Tente novamente.");setLeadId(String(body.lead.id));setPhase("choice");
     }catch(reason){setError(reason instanceof Error?reason.message:"Tente novamente em instantes.");}
     finally{setLoading(false);}
   }
@@ -68,7 +84,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
     event.preventDefault();
     if(!detailCanContinue) return;
     if(detailStep<3){setDetailStep(step=>step+1);return;}
-    if(!leadId){setPhase("done");return;}
+    if(!leadId){setError("Solicitação não identificada. Volte à primeira etapa e tente novamente.");return;}
     setLoading(true);setError("");
     const details=[form.situation&&`Situação: ${form.situation}.`,form.details].filter(Boolean).join(" ");
     try{
@@ -90,7 +106,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
       <section className="leadPanel"><button type="button" className="modalClose" onClick={close} aria-label="Fechar formulário">×</button>
         {phase==="quick"&&<form className="leadForm" onSubmit={captureInitial}><div className="leadProgress"><span>Etapa 1 de 2</span><i><em style={{width:`${quickStep===1?48:100}%`}}/></i></div>
           {quickStep===1&&<><p className="quizKicker">Para começar</p><h1 id="lead-title">Qual serviço você quer resolver?</h1><p className="leadHelper">Escolha a opção que mais se aproxima. A gente cuida do direcionamento técnico.</p><div className="solutionChoices">{solutions.map(item=><button type="button" key={item.value} className={form.service===item.value?"selected":""} onClick={()=>set("service",item.value)}><b>{item.label}</b><span>{item.copy}</span><i>→</i></button>)}</div></>}
-          {quickStep===2&&<><p className="quizKicker">O essencial para te encontrar</p><h1 id="lead-title">Para quem a FR deve retornar?</h1><p className="leadHelper">Seu pedido entra no painel agora. Os demais dados podem ficar para depois.</p><div className="leadFields"><label>Seu nome<input autoFocus placeholder="Como podemos chamar você?" value={form.name} onChange={event=>set("name",event.target.value)}/></label><label>WhatsApp com DDD<input inputMode="tel" placeholder="(00) 00000-0000" value={form.phone} onChange={event=>set("phone",event.target.value)}/></label><label>Em qual cidade fica o imóvel? <small>opcional nesta etapa</small><input placeholder="Cidade / SP" value={form.city} onChange={event=>set("city",event.target.value)}/></label></div></>}
+          {quickStep===2&&<><p className="quizKicker">O essencial para te encontrar</p><h1 id="lead-title">Para quem a FR deve retornar?</h1><p className="leadHelper">Seu pedido entra no painel agora. Os demais dados podem ficar para depois.</p><div className="leadFields"><label>Seu nome<input autoFocus placeholder="Como podemos chamar você?" value={form.name} onChange={event=>set("name",event.target.value)}/></label><label>WhatsApp com DDD<input inputMode="tel" placeholder="(00) 00000-0000" value={form.phone} onChange={event=>set("phone",event.target.value)}/></label><label>Em qual cidade fica o imóvel? <small>opcional nesta etapa</small><input placeholder="Cidade e estado" value={form.city} onChange={event=>set("city",event.target.value)}/></label></div></>}
           {error&&<p className="leadError">{error}</p>}<div className="leadActions">{quickStep===2&&<button type="button" className="back" onClick={()=>setQuickStep(1)}>Voltar</button>}<button className="primary" disabled={!quickCanContinue||loading}>{loading?"Enviando…":quickStep===1?"Continuar":"Enviar solicitação"}<span>→</span></button></div>
         </form>}
         {phase==="choice"&&<div className="leadResult"><span className="resultMark">✓</span><p className="quizKicker">Captação concluída</p><h1 id="lead-title">Pronto, {form.name.split(" ")[0]||"sua solicitação"} já chegou à FR.</h1><p>Quer responder algumas perguntas opcionais? Elas ajudam a equipe a retornar já entendendo o seu cenário.</p><button type="button" className="primary" onClick={()=>setPhase("details")}>Quero detalhar meu caso <span>→</span></button><a className="modalWhatsApp" href={`https://wa.me/${wa}?text=${encodeURIComponent(whatsappText)}`} target="_blank" rel="noreferrer">Ou falar pelo WhatsApp agora <span>↗</span></a><button type="button" className="skipButton" onClick={()=>setPhase("done")}>Prefiro deixar para depois</button></div>}
