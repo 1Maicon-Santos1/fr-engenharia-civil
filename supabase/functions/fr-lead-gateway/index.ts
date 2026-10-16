@@ -204,10 +204,10 @@ function parseAttribution(input: unknown) {
   const raw = input && typeof input === "object" && !Array.isArray(input)
     ? input as Record<string, unknown>
     : {};
-  const source = clean(raw.source, 100).replace(/[\\r\\n*_~`]/g, " ") || "Não identificado";
+  const source = clean(raw.source, 100).replace(/[\r\n*_~\x60]/g, " ").trim() || "Não identificado";
   const attribution: Record<string, string> = {};
   for (const key of ATTRIBUTION_KEYS) {
-    const value = clean(raw[key], key === "landing_path" ? 250 : 150).replace(/[\\r\\n]/g, " ");
+    const value = clean(raw[key], key === "landing_path" ? 250 : 150).replace(/[\r\n]/g, " ");
     if (value) attribution[key] = value;
   }
   return { source, attribution };
