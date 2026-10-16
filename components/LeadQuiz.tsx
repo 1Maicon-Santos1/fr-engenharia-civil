@@ -1,6 +1,7 @@
 "use client";
 
 import {FormEvent,useEffect,useMemo,useState} from "react";
+import {captureLeadAttribution} from "@/lib/lead-attribution";
 
 type Form={service:string;name:string;phone:string;email:string;city:string;propertyType:string;urgency:string;situation:string;details:string};
 type Phase="quick"|"choice"|"details"|"done";
@@ -36,6 +37,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
   const set=(key:keyof Form,value:string)=>setForm(current=>({...current,[key]:value}));
   const close=()=>setOpen(false);
   const launch=()=>{setOpen(true);setError("");};
+  useEffect(()=>{captureLeadAttribution();},[]);
   useEffect(()=>{
     const onClick=(event:MouseEvent)=>{
       const target=event.target;
@@ -72,7 +74,7 @@ export function LeadQuiz({preset}:{preset?:string}) {
     if(quickStep===1){setQuickStep(2);return;}
     setLoading(true);setError("");
     try{
-      const response=await fetch("/api/leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:form.service,name:form.name,phone:form.phone,email:form.email,city:form.city})});
+      const response=await fetch("/api/leads",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({service:form.service,name:form.name,phone:form.phone,email:form.email,city:form.city,attribution:captureLeadAttribution()})});
       const body=await response.json();
       if(!response.ok) throw new Error(body.error||"Não foi possível enviar seus dados.");
       if(!body?.lead?.id) throw new Error("Não foi possível confirmar o cadastro. Tente novamente.");setLeadId(String(body.lead.id));setPhase("choice");

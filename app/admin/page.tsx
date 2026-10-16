@@ -16,6 +16,16 @@ type Lead = {
   urgency: string | null;
   details: string | null;
   stage: "initial" | "enriched";
+  source?: string | null;
+  attribution?: {
+    utm_source?: string;
+    utm_medium?: string;
+    utm_campaign?: string;
+    utm_content?: string;
+    utm_term?: string;
+    referrer_domain?: string;
+    landing_path?: string;
+  } | null;
   created_at: string;
 };
 type Settings = {
@@ -243,7 +253,8 @@ export default function Admin() {
     const value = search.trim().toLocaleLowerCase("pt-BR");
     if (!value) return leads;
     return leads.filter(lead =>
-      [lead.name, lead.phone, lead.email, lead.service, lead.city, lead.property_type, lead.details]
+      [lead.name, lead.phone, lead.email, lead.service, lead.city, lead.property_type, lead.details,
+        lead.source, lead.attribution?.utm_source, lead.attribution?.utm_campaign, lead.attribution?.utm_medium]
         .some(field => (field || "").toLocaleLowerCase("pt-BR").includes(value))
     );
   }, [search, leads]);
@@ -306,10 +317,17 @@ export default function Admin() {
           return <article className="frLeadCard" key={lead.id}>
             <div className="frLeadCardTop">
               <div><h2>{lead.name}</h2><span className="frLeadDate">Recebido em {new Date(lead.created_at).toLocaleString("pt-BR")}</span></div>
-              <span className={lead.stage === "enriched" ? "frStage frStageComplete" : "frStage"}>{lead.stage === "enriched" ? "Diagnóstico completo" : "Captação inicial"}</span>
+              <div className="frLeadBadges">
+                <span className="frOriginTag">Origem: {lead.source && lead.source !== "site" ? lead.source : "Não identificada (cadastro antigo)"}</span>
+                <span className={lead.stage === "enriched" ? "frStage frStageComplete" : "frStage"}>{lead.stage === "enriched" ? "Diagnóstico completo" : "Captação inicial"}</span>
+              </div>
             </div>
             <div className="frLeadDetails">
               <div><span>Serviço solicitado</span><strong>{lead.service}</strong></div>
+              <div><span>Origem do lead</span><strong>{lead.source && lead.source !== "site" ? lead.source : "Não identificada (cadastro antigo)"}</strong></div>
+              {lead.attribution?.utm_campaign && <div><span>Campanha (UTM)</span><strong>{lead.attribution.utm_campaign}</strong></div>}
+              {lead.attribution?.utm_medium && <div><span>Mídia (UTM)</span><strong>{lead.attribution.utm_medium}</strong></div>}
+              {lead.attribution?.utm_source && <div><span>Fonte (UTM)</span><strong>{lead.attribution.utm_source}</strong></div>}
               <div><span>WhatsApp</span><a href={"https://wa.me/" + waNumber} target="_blank" rel="noopener noreferrer">{lead.phone}</a></div>
               <div><span>Cidade informada</span><strong>{lead.city || "Não informada"}</strong></div>
               <div><span>Tipo de imóvel</span><strong>{lead.property_type || "Não informado"}</strong></div>
@@ -374,7 +392,7 @@ export default function Admin() {
         </div>
         <section className="frSettingsCard frTemplateCard">
           <div className="frCardHeading"><div><p className="frEyebrow">MODELOS DE NOTIFICAÇÃO</p><h2>Formato das mensagens</h2><p>Edite o texto que chega ao grupo em cada etapa do formulário.</p></div></div>
-          <p className="frTemplateHelp">Variáveis disponíveis: <code>{"{{nome}}"}</code> <code>{"{{whatsapp}}"}</code> <code>{"{{email}}"}</code> <code>{"{{servico}}"}</code> <code>{"{{cidade}}"}</code> <code>{"{{tipo_local}}"}</code> <code>{"{{urgencia}}"}</code> <code>{"{{detalhes}}"}</code> <code>{"{{link_painel}}"}</code>. Mantenha <code>{"{{link_painel}}"}</code> nas duas mensagens.</p>
+          <p className="frTemplateHelp">Variáveis disponíveis: <code>{"{{nome}}"}</code> <code>{"{{whatsapp}}"}</code> <code>{"{{email}}"}</code> <code>{"{{servico}}"}</code> <code>{"{{cidade}}"}</code> <code>{"{{tipo_local}}"}</code> <code>{"{{urgencia}}"}</code> <code>{"{{detalhes}}"}</code> <code>{"{{link_painel}}"}</code> <code>{"{{origem}}"}</code> <code>{"{{rastreio}}"}</code> <code>{"{{campanha}}"}</code> <code>{"{{midia}}"}</code> <code>{"{{utm_source}}"}</code> <code>{"{{utm_medium}}"}</code> <code>{"{{utm_campaign}}"}</code>. Mantenha <code>{"{{link_painel}}"}</code> nas duas mensagens.</p>
           <div className="frTemplatesGrid">
             <label className="frField"><b>Mensagem 1 — Novo lead</b><small>Enviada após a captação essencial.</small>
               <textarea rows={12} maxLength={8000} value={draft.initialTemplate} onChange={event => edit("initialTemplate", event.target.value)} required spellCheck={false} />
