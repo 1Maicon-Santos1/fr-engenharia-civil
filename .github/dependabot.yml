@@ -1,0 +1,46 @@
+# Automated PRs require owner review and isolated tests before merge or production activation.
+# Enable dependency graph, Dependabot alerts and security updates in repository settings.
+# No target-branch and no global major-version ignore: critical security fixes remain visible.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-name: "*"
+        # This restriction applies to version updates, not security fixes.
+        update-types:
+          - "version-update:semver-patch"
+          - "version-update:semver-minor"
+    commit-message:
+      prefix: "chore(deps)"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "07:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 5
+    allow:
+      - dependency-name: "*"
+        # This restriction applies to version updates, not security fixes.
+        update-types:
+          - "version-update:semver-patch"
+          - "version-update:semver-minor"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      react-security:
+        applies-to: "security-updates"
+        patterns: ["react", "react-dom"]
+      react-compatible:
+        applies-to: "version-updates"
+        patterns: ["react", "react-dom"]
+        update-types: ["minor", "patch"]

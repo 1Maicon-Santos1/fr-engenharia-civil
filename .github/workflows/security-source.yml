@@ -1,0 +1,110 @@
+name: Source security baseline
+
+# This workflow performs bounded static checks only; it never installs or runs the application.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-security-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-policy:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Read source without retaining checkout credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+          submodules: false
+          lfs: false
+      - name: Check source for high-confidence credential literals and mutable actions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ulimit -t 120
+          ulimit -v 786432
+          ulimit -u 64
+          ulimit -f 10240
+          mkdir -p "$RUNNER_TEMP/security-home"
+          env -i PATH=/usr/bin:/bin HOME="$RUNNER_TEMP/security-home" TMPDIR="$RUNNER_TEMP" LANG=C.UTF-8 python3 -I - <<'PY'
+          import base64
+          import json
+          import os
+          from pathlib import Path
+          import re
+          import stat
+          import subprocess
+          import sys
+          
+          MAX_FILE=2*1024*1024
+          MAX_TOTAL=64*1024*1024
+          paths=subprocess.check_output(['git','-c','core.hooksPath=/dev/null','ls-files','-z']).split(b'\0')
+          rules=[
+           ('github-classic-token',re.compile(rb'gh[pousr]_[A-Za-z0-9]{36,}')),
+           ('github-fine-grained-token',re.compile(rb'github_pat_[A-Za-z0-9_]{60,}')),
+           ('supabase-secret-key',re.compile(rb'sb_secret_[A-Za-z0-9_-]{20,}')),
+           ('supabase-personal-token',re.compile(rb'sbp_[A-Za-z0-9]{20,}')),
+           ('private-key',re.compile(rb'-----BEGIN (?:RSA |EC |OPENSSH |DSA |ENCRYPTED )?PRIVATE KEY-----')),
+          ]
+          jwts=re.compile(rb'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}')
+          issues=[]
+          scanned=0
+          skipped=0
+          total=0
+          for raw in paths:
+           if not raw:
+            continue
+           name=os.fsdecode(raw)
+           path=Path(name)
+           try:
+            info=path.lstat()
+           except OSError:
+            skipped+=1
+            continue
+           if not stat.S_ISREG(info.st_mode) or info.st_size>MAX_FILE or total+info.st_size>MAX_TOTAL:
+            skipped+=1
+            continue
+           data=path.read_bytes()
+           total+=len(data)
+           scanned+=1
+           for rule,pattern in rules:
+            for match in pattern.finditer(data):
+             issues.append({'file':name,'line':data.count(b'\n',0,match.start())+1,'rule':rule})
+           for match in jwts.finditer(data):
+            try:
+             payload=match.group().split(b'.')[1]
+             claims=json.loads(base64.urlsafe_b64decode(payload+b'='*(-len(payload)%4)))
+            except (ValueError,TypeError,UnicodeError):
+             continue
+            if isinstance(claims,dict) and claims.get('role')=='service_role':
+             issues.append({'file':name,'line':data.count(b'\n',0,match.start())+1,'rule':'supabase-service-role-jwt'})
+           if name.startswith('.github/workflows/') and path.suffix in ('.yml','.yaml'):
+            text=data.decode('utf-8',errors='replace')
+            for number,line in enumerate(text.splitlines(),1):
+             use=re.match(r'^\s*-?\s*uses:\s*([^\s#]+)',line)
+             if not use:
+              continue
+             ref=use.group(1)
+             if ref.startswith('./'):
+              continue
+             if ref.startswith('docker://') and re.search(r'@sha256:[0-9a-f]{64}$',ref):
+              continue
+             if not re.search(r'@[0-9a-f]{40}$',ref):
+              issues.append({'file':name,'line':number,'rule':'action-reference-not-immutable'})
+          for issue in issues:
+           # Deliberately print locations/rule names only, never matched values or file contents.
+           print(json.dumps(issue,ensure_ascii=True))
+          print(json.dumps({'source_files_scanned':scanned,'skipped_entries':skipped,'bytes_scanned':total,'violations':len(issues)}))
+          if issues:
+           print('Source policy failed. Review the locations privately; do not copy secret values into logs or issues.')
+           sys.exit(1)
+          print('Bounded source policy passed. Application behavior, full history and skipped files were not tested.')
+          PY

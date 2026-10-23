@@ -3,3 +3,18 @@ node_modules
 .vercel
 .env*.local
 *.log
+
+# MS security: local credentials and operational backups
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.vercel/
+*.private-key.pem
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+*.dump
+*.backup
